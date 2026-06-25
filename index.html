@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Compass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Merriweather:wght@400;700;900&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">R</div>
+      <div style="min-width:0"><b id="brandName">Research Compass</b><small id="brandSub">Master's · Materials</small></div>
+    </div>
+    <nav class="nav" id="nav">
+      <button data-tab="today" class="active"><span class="ic">◎</span> Today</button>
+      <button data-tab="analytics"><span class="ic">📊</span> Analytics</button>
+      <div class="navlabel">Plan</div>
+      <button data-tab="workflow"><span class="ic">🧭</span> Workflow</button>
+      <button data-tab="projects"><span class="ic">🗂️</span> Projects</button>
+      <button data-tab="deadlines"><span class="ic">⏳</span> Deadlines & Goals</button>
+      <div class="navlabel">Track</div>
+      <button data-tab="papers"><span class="ic">📚</span> Papers</button>
+      <button data-tab="focus"><span class="ic">⏱️</span> Focus & Time</button>
+      <button data-tab="reviews"><span class="ic">🗒️</span> Reviews</button>
+      <div class="navlabel">System</div>
+      <button data-tab="settings"><span class="ic">⚙️</span> Settings</button>
+      <button data-tab="guide"><span class="ic">🎓</span> Research Guide</button>
+    </nav>
+    <div class="foot">
+      <div class="streak"><span style="font-size:17px">🔥</span><div>Streak<br><b id="streakNum">0 days</b></div></div>
+      <div>Synced to your Supabase project, with a local cache for offline use. Back up anytime in Settings.</div>
+    </div>
+  </aside>
+  <div id="navOverlay" onclick="toggleNav(false)"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="menubtn" onclick="toggleNav()">☰</button>
+      <div>
+        <h1 id="pageTitle">Today</h1>
+        <div class="sub" id="pageSub">Your daily check-in</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="bell" id="themeBtn" onclick="toggleTheme()" title="Toggle light / dark">🌙</button>
+      <button class="bell" id="bellBtn" onclick="showRemindersNow()" title="Reminders">🔔<span class="bdot" id="bellDot"></span></button>
+      <div class="projsel" title="Active project">
+        <span class="dot" id="projDot" style="background:var(--accent-strong)"></span>
+        <select id="projSwitch" onchange="setActiveProject(this.value)"></select>
+      </div>
+    </header>
+    <div class="content">
+      <div class="page active" id="page-today"></div>
+      <div class="page" id="page-analytics"></div>
+      <div class="page" id="page-workflow"></div>
+      <div class="page" id="page-projects"></div>
+      <div class="page" id="page-deadlines"></div>
+      <div class="page" id="page-papers"></div>
+      <div class="page" id="page-focus"></div>
+      <div class="page" id="page-reviews"></div>
+      <div class="page" id="page-settings"></div>
+      <div class="page" id="page-guide"></div>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal"></div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="notifWrap"></div>
+
+  <script src="js/state.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/today.js"></script>
+  <script src="js/analytics.js"></script>
+  <script src="js/workflow.js"></script>
+  <script src="js/trackers.js"></script>
+  <script src="js/reviews.js"></script>
+  <script src="js/reminders.js"></script>
+  <script src="js/guide.js"></script>
+  <script src="js/cloud.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
