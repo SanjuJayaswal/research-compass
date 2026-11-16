@@ -41,6 +41,11 @@ function ensureHabits(s){ s=s||state; if(!s) return;
   if(!h.log||typeof h.log!=='object') h.log={};
   if(!h.anchorLog||typeof h.anchorLog!=='object') h.anchorLog={};
   if(!h.startedAt) h.startedAt=(typeof todayStr==='function'?todayStr():null);
+  // v2: per-habit reminders + Do & Don't guidance
+  if(!h.remindInit){ const on=['hb_move','hb_study1','hb_study2','hb_phone','hb_plan','hb_read'];
+    h.items.forEach(i=>{ if(i.remind===undefined) i.remind=on.includes(i.id); }); h.remindInit=true; }
+  if(h.notify===undefined) h.notify=true;
+  if(!h.guide||!Array.isArray(h.guide.items)) h.guide={items:(typeof defaultGuide==='function'?defaultGuide():[])};
   return h; }
 ensureHabits();
 
@@ -78,13 +83,14 @@ function toggleAnchor(date){ date=date||todayStr(); const h=ensureHabits(); h.an
 function editHabit(id){ const h=ensureHabits(); const it=id?h.items.find(x=>x.id===id):{time:'',text:'',note:'',why:'',key:false};
   const body=`<div class="two"><div class="field"><label>Time</label><input id="hbTime" type="time" value="${esc(it.time)}"></div>
     <div class="field"><label>Key habit</label><select id="hbKey"><option value="0" ${it.key?'':'selected'}>No</option><option value="1" ${it.key?'selected':''}>Yes, a core anchor</option></select></div></div>
+    <div class="field"><label>Reminder</label><select id="hbRemind"><option value="1" ${it.remind?'selected':''}>Remind me at this time</option><option value="0" ${it.remind?'':'selected'}>No reminder</option></select></div>
     <div class="field"><label>Habit</label><input id="hbText" value="${esc(it.text)}" placeholder="e.g. Study block 1"></div>
     <div class="field"><label>Detail</label><input id="hbNote" value="${esc(it.note)}" placeholder="optional"></div>
     <div class="field"><label>Why (chart link)</label><input id="hbWhy" value="${esc(it.why)}" placeholder="optional"></div>`;
   const del=id?`<button class="btn ghost" style="margin-right:auto;color:var(--red)" onclick="delHabit('${id}')">Delete</button>`:'';
   openModal(modalShell(id?'Edit habit':'Add habit',body,`${del}<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveHabit('${id||''}')">Save</button>`)); }
 function saveHabit(id){ const text=$('#hbText').value.trim(); if(!text){ toast('Habit text required'); return; }
-  const data={time:$('#hbTime').value,text,note:$('#hbNote').value.trim(),why:$('#hbWhy').value.trim(),key:$('#hbKey').value==='1'};
+  const data={time:$('#hbTime').value,text,note:$('#hbNote').value.trim(),why:$('#hbWhy').value.trim(),key:$('#hbKey').value==='1',remind:$('#hbRemind').value==='1'};
   const h=ensureHabits(); if(id) Object.assign(h.items.find(x=>x.id===id),data); else h.items.push({id:uid('hb'),...data});
   save(); closeModal(); renderHabits(); toast('Saved'); }
 function delHabit(id){ const h=ensureHabits(); h.items=h.items.filter(x=>x.id!==id); save(); closeModal(); renderHabits(); toast('Habit removed'); }
@@ -96,7 +102,7 @@ function editAnchor(dow){ const h=ensureHabits(); const a=h.weekly[dow]||{title:
 function saveAnchor(dow){ const t=$('#anText').value.trim(); const h=ensureHabits(); if(!t){ delete h.weekly[dow]; } else h.weekly[dow]={title:$('#anTitle').value.trim()||DOW[dow],text:t};
   save(); closeModal(); renderHabits(); }
 function delAnchor(dow){ delete ensureHabits().weekly[dow]; save(); closeModal(); renderHabits(); }
-function resetHabitsToDefault(){ const h=ensureHabits(); const d=defaultHabits(); h.items=d.items; h.weekly=d.weekly; h.weeklyAny=d.weeklyAny; save(); renderHabits(); toast('Restored the original rhythm'); }
+function resetHabitsToDefault(){ const h=ensureHabits(); const d=defaultHabits(); h.items=d.items; h.weekly=d.weekly; h.weeklyAny=d.weeklyAny; h.remindInit=false; h.guide={items:defaultGuide()}; ensureHabits(); save(); renderHabits(); toast('Restored the original rhythm'); }
 
 /* ===================== UI PIECES ===================== */
 function habitRow(it,date,compact){ const done=!!habitDay(date)[it.id];
@@ -105,7 +111,7 @@ function habitRow(it,date,compact){ const done=!!habitDay(date)[it.id];
   return `<div class="task ${done?'done':''}" style="${due&&!compact?'border-color:color-mix(in oklch,var(--amber) 45%,var(--border))':''}">
     <div class="cb ${done?'on':''}" role="checkbox" aria-checked="${done}" tabindex="0" onclick="toggleHabit('${it.id}','${date}')" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleHabit('${it.id}','${date}')}">${done?'✓':''}</div>
     <div style="font-family:var(--font-mono);font-weight:700;font-size:13px;width:44px;flex:none;color:var(--secondary-foreground);font-variant-numeric:tabular-nums;padding-top:1px">${esc(it.time||'—')}</div>
-    <div class="tx">${esc(it.text)}${it.key?' <span class="pill accent" style="font-size:9.5px;padding:1px 6px">core</span>':''}
+    <div class="tx">${esc(it.text)}${it.key?' <span class="pill accent" style="font-size:9.5px;padding:1px 6px">core</span>':''}${it.remind&&!compact?' <span title="Reminder on" style="font-size:11px">🔔</span>':''}
       ${!compact&&(it.note||it.why)?`<div class="meta">${it.note?`<span class="mut3" style="font-size:12.5px">${esc(it.note)}</span>`:''}${it.why?`<span class="tag" style="color:var(--amber)">${esc(it.why)}</span>`:''}</div>`:''}</div>
     ${compact?'':`<button class="iconbtn" title="Edit" onclick="editHabit('${it.id}')">✎</button>`}</div>`; }
 function anchorCard(date){ const h=ensureHabits(); const a=h.weekly[dowOf(date)]; if(!a) return '';
@@ -151,6 +157,9 @@ function renderHabits(){ ensureHabits(); const el=$('#page-habits'); const t=tod
         <div style="font-size:11px;color:var(--ink-3);font-weight:700">${DOW[dowOf(d)]}</div>
         <div style="font-family:var(--font-mono);font-weight:700;font-size:15px;color:${fg};font-variant-numeric:tabular-nums">${p}%</div></button>`; }).join('')}</div></div>`;
 
+  // dynamic guidance + reminder settings
+  html+=guidancePanel();
+
   // checklist
   html+=`<div class="card pad mb12"><div class="between mb12"><div class="sec-title" style="margin:0">✓ ${isToday?"Today's rhythm":'Rhythm for '+fmtNice(date)}</div>
     <div class="flex" style="gap:8px">${isToday?'':`<button class="btn subtle sm" onclick="habitView=null;renderHabits()">Back to today</button>`}<button class="btn ghost sm" onclick="editHabit()">+ Add habit</button></div></div>`;
@@ -172,6 +181,159 @@ function renderHabits(){ ensureHabits(); const el=$('#page-habits'); const t=tod
       <div class="sec-title mt20">🪜 Four-week build-up</div>
       ${RAMP.map((r,i)=>`<div class="flex" style="align-items:flex-start;gap:10px;margin-bottom:8px;${habitRampWeek()===i+1?'':'opacity:.6'}"><span class="pill ${habitRampWeek()===i+1?'accent':''}" style="flex:none">Week ${i+1}</span><div style="font-size:13px">${r}</div></div>`).join('')}
       <div class="mut3" style="font-size:12px">You're in week ${habitRampWeek()} (started ${fmtShort(h.startedAt)}).</div></div></div>`;
+  html+=guideListCard();
+  html+=reminderSettingsCard();
   html+=`<div style="text-align:right"><button class="btn ghost sm" onclick="resetHabitsToDefault()">Restore original habit list</button></div>`;
   el.innerHTML=html;
 }
+
+/* ===================== LIFE PERIODS (Vimshottari, from the birth chart) ===================== */
+const PERIODS=[
+  {from:'2026-01-03',to:'2026-11-28',name:'Rahu–Sun',theme:'Identity, self-assertion and how you are seen.',boost:['self']},
+  {from:'2026-11-28',to:'2028-05-29',name:'Rahu–Moon',theme:'Emotions, family, home and money come into focus. Feelings run louder than usual.',boost:['family','mood','money']},
+  {from:'2028-05-29',to:'2029-06-16',name:'Rahu–Mars',theme:'Energy, ambition and decisive moves. A significant connection is likely.',boost:['body','rel']},
+  {from:'2029-06-16',to:'2031-08-04',name:'Jupiter–Jupiter',theme:'Your golden period opens: purpose, commitment, recognition.',boost:['study','mentor']},
+  {from:'2031-08-04',to:'2034-02-14',name:'Jupiter–Saturn',theme:'Building something lasting: career, home and responsibility.',boost:['money','study']},
+  {from:'2034-02-14',to:'2036-05-22',name:'Jupiter–Mercury',theme:'Family growth, learning and communication.',boost:['family','study']}
+];
+function currentPeriod(d){ d=d||todayStr(); return PERIODS.find(p=>d>=p.from&&d<p.to)||null; }
+function nextPeriod(d){ d=d||todayStr(); return PERIODS.find(p=>p.from>d)||null; }
+const SADE_SATI_START='2027-06-01';
+function timeSlot(){ const h=tzNow().hour; return h>=5&&h<11?'morning':h>=11&&h<17?'day':h>=17&&h<21?'evening':'night'; }
+const SLOT_LABEL={morning:'this morning',day:'today',evening:'this evening',night:'tonight'};
+
+/* ===================== DO & DON'T (editable, picked dynamically) ===================== */
+function defaultGuide(){ const g=(id,type,text,area,slots,tags)=>({id,type,text,area,slots,tags:tags||[]}); const A=['morning','day','evening','night'];
+  return [
+  g('gd_blocks','do','Study in short, fixed blocks with the phone in another room.','study',['morning','evening'],['study']),
+  g('gd_step','do','Before you start, write the one concrete next step of the task.','study',['morning','evening'],['study']),
+  g('gd_commit','do','Commit to one main direction while Jupiter crosses your 5th house (until mid-2027).','study',['day'],['study']),
+  g('gd_mentor','do','Ask a mentor or teacher one real question, and listen to the answer.','study',['day'],['mentor','thu']),
+  g('gd_move','do','Move your body: run, gym, sport or a brisk walk.','body',['morning','day'],['body']),
+  g('gd_sleep','do','Keep the same sleep and wake time.','body',['night'],['body']),
+  g('gd_outdoors','do','Spend some time outdoors.','body',['day','evening'],['body','sun']),
+  g('gd_people','do','Be with real people: a class, club, sport or study group.','rel',['day','evening'],['rel']),
+  g('gd_early','do','Say small frustrations early and calmly, before they build up.','rel',['evening'],['rel','mood']),
+  g('gd_listen','do','In one conversation today, listen more than you lead.','rel',['day','evening'],['rel']),
+  g('gd_family','do','Stay close to family. Call home.','rel',['evening'],['family','mon']),
+  g('gd_save','do','Save a fixed amount, even a small one.','money',['day'],['money','sat']),
+  g('gd_slow','do','Grow money slowly and steadily.','money',['day'],['money']),
+  g('gd_surya','do','Offer water to the Sun at sunrise.','spirit',['morning'],['sun']),
+  g('gd_elders','do','Respect teachers and elders; help a junior.','spirit',['day'],['mentor','thu']),
+  g('gd_breath','do','5 to 10 minutes of meditation or slow breathing.','spirit',['morning','night'],['mood']),
+  g('av_scroll','avoid','Endless scrolling, especially in bed and first thing in the morning.','mind',['morning','night'],['scroll']),
+  g('av_partner','avoid','Waiting for a partner to give you purpose. Build your own.','rel',['evening','night'],['rel']),
+  g('av_quick','avoid','Shortcuts and quick-money schemes: betting, speculative trading, crypto hype.','money',['day'],['money']),
+  g('av_intox','avoid','Intoxicants and late nights.','body',['evening','night'],['body']),
+  g('av_many','avoid','Starting many things and finishing none.','study',['day'],['study']),
+  g('av_pride','avoid','Refusing help because of pride.','mind',['day'],['mentor','self']),
+  g('av_harsh','avoid','Harsh or critical words, especially with family.','rel',['evening'],['family','mood']),
+  g('av_impulse','avoid','Big decisions when your mood is very high or very low.','mind',['evening','night'],['mood']),
+  g('av_compare','avoid',"Comparing your timeline to others'. You are preparing, not late.",'mind',['night','day'],['self'])
+  ]; }
+function guideItems(){ return ensureHabits().guide.items; }
+function _hash(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return Math.abs(h); }
+
+/* live context from the clock, the calendar, the habit log and the chart periods */
+function guideContext(){ const t=todayStr(), slot=timeSlot(), now=nowMinutes(), dow=dowOf(t), day=habitDay(t);
+  const per=currentPeriod(t); const tags={};
+  const add=(k,n)=>tags[k]=(tags[k]||0)+n;
+  (per?per.boost:[]).forEach(b=>add(b,2));
+  if(dow===4) add('thu',3); if(dow===1) add('mon',3); if(dow===6) add('sat',3); if(dow===0) add('sun',2);
+  if(daysBetween(t,SADE_SATI_START)>=0&&daysBetween(t,SADE_SATI_START)<240) add('money',2);
+  const notes=[];
+  const missedStudy=habitItems().filter(i=>/study/i.test(i.id+i.text)&&!day[i.id]&&i.time&&toMin(i.time)+30<=now);
+  if(missedStudy.length){ add('study',3); add('scroll',3);
+    notes.push({lvl:'warn',ic:'📖',html:`<b>${esc(missedStudy[0].text)}</b> slipped. Do the two-minute version now: open the book and read one paragraph.`}); }
+  const move=habitItems().find(i=>i.id==='hb_move'); if(move&&!day[move.id]&&slot!=='night') add('body',2);
+  const yPct=habitPct(addDays(t,-1));
+  if(yPct<40&&Object.keys(ensureHabits().log).length) notes.push({lvl:'tip',ic:'🪴',html:`Yesterday was light (${yPct}%). Don't miss two in a row: today, just hit the core habits.`});
+  const st=habitStreak(); if(st>=3) notes.push({lvl:'good',ic:'🔥',html:`${st}-day rhythm streak. This is how the Jupiter years get built.`});
+  if(slot==='night'){ add('scroll',3); add('mood',1); }
+  if(slot==='morning') add('scroll',2);
+  return {t,slot,dow,per,tags,notes}; }
+function pickGuide(type,n,ctx){ ctx=ctx||guideContext(); const seed=ctx.t+ctx.slot;
+  return guideItems().filter(g=>g.type===type).map(g=>{ let s=1;
+      if(!g.slots||!g.slots.length||g.slots.includes(ctx.slot)) s+=3;
+      (g.tags||[]).forEach(k=>s+=ctx.tags[k]||0);
+      return {g,s:s+(_hash(seed+g.id)%100)/100}; })
+    .sort((a,b)=>b.s-a.s).slice(0,n).map(x=>x.g); }
+
+function periodLine(ctx){ const p=ctx.per, nx=nextPeriod(ctx.t); if(!p) return '';
+  return `<div class="flex" style="flex-wrap:wrap;gap:8px;margin-bottom:10px"><span class="pill accent">${esc(p.name)} · until ${fmtShort(p.to)} ${p.to.slice(0,4)}</span><span class="mut3" style="font-size:12.5px">${esc(p.theme)}</span></div>`+
+    (nx&&daysBetween(ctx.t,nx.from)<=30?`<div class="mut3" style="font-size:12px;margin:-4px 0 10px">Next: <b>${esc(nx.name)}</b> from ${fmtShort(nx.from)}.</div>`:''); }
+function guideRow(g){ const isDo=g.type==='do';
+  return `<div class="flex" style="align-items:flex-start;gap:10px;padding:8px 0"><span style="flex:none;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:12px;font-weight:800;background:var(${isDo?'--green-soft':'--red-soft'});color:var(${isDo?'--green':'--red'})">${isDo?'✓':'✕'}</span><div style="font-size:13.5px;line-height:1.45">${esc(g.text)}</div></div>`; }
+
+/* compact card for Today */
+function guidanceTodayCard(){ const ctx=guideContext(); const d=pickGuide('do',1,ctx)[0], a=pickGuide('avoid',1,ctx)[0];
+  if(!d&&!a) return '';
+  return `<div class="card pad mb12"><div class="between mb12"><div class="sec-title" style="margin:0">🧭 Guidance for ${SLOT_LABEL[ctx.slot]}</div><button class="btn subtle sm" onclick="go('habits')">More →</button></div>
+    ${periodLine(ctx)}${ctx.notes.slice(0,1).map(n=>`<div class="banner ${n.lvl}" style="margin-bottom:8px"><span class="bic">${n.ic}</span><div>${n.html}</div></div>`).join('')}
+    <div class="two" style="gap:4px 18px">${d?`<div><div class="mut3" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Do</div>${guideRow(d)}</div>`:''}${a?`<div><div class="mut3" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Avoid</div>${guideRow(a)}</div>`:''}</div></div>`; }
+
+/* "right now" panel at the top of Daily Rhythm */
+function guidancePanel(){ const ctx=guideContext(); const ds=pickGuide('do',3,ctx), as=pickGuide('avoid',3,ctx);
+  return `<div class="card pad mb12"><div class="sec-title">🧭 Right now · ${SLOT_LABEL[ctx.slot]}</div>${periodLine(ctx)}
+    ${ctx.notes.map(n=>`<div class="banner ${n.lvl}" style="margin-bottom:8px"><span class="bic">${n.ic}</span><div>${n.html}</div></div>`).join('')}
+    <div class="two"><div><div class="mut3" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Do</div>${ds.map(guideRow).join('')}</div>
+    <div><div class="mut3" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">Avoid</div>${as.map(guideRow).join('')}</div></div>
+    <div class="mut3" style="font-size:11.5px;margin-top:6px">Picks change with the time of day, the weekday, what you've ticked and your current chart period.</div></div>`; }
+
+/* full editable list */
+let guideOpen=false;
+function guideListCard(){ const items=guideItems(); const ds=items.filter(g=>g.type==='do'), as=items.filter(g=>g.type==='avoid');
+  const row=g=>`<div class="task"><span style="color:var(${g.type==='do'?'--green':'--red'});font-weight:800">${g.type==='do'?'✓':'✕'}</span><div class="tx">${esc(g.text)}<div class="meta"><span class="tag">${esc(g.area||'')}</span></div></div><button class="iconbtn" title="Delete" onclick="delGuide('${g.id}')">✕</button></div>`;
+  return `<div class="card pad mb12"><div class="between ${guideOpen?'mb12':''}"><div class="sec-title" style="margin:0">📜 Your full Do & Don't list (${items.length})</div>
+    <div class="flex" style="gap:8px"><button class="btn ghost sm" onclick="addGuide()">+ Add</button><button class="btn subtle sm" onclick="guideOpen=!guideOpen;renderHabits()">${guideOpen?'Hide':'Show'}</button></div></div>
+    ${guideOpen?`<div class="two"><div><div class="sec-title">Do (${ds.length})</div>${ds.map(row).join('')}</div><div><div class="sec-title">Avoid (${as.length})</div>${as.map(row).join('')}</div></div>`:''}</div>`; }
+function addGuide(){ const body=`<div class="field"><label>Type</label><select id="gdType"><option value="do">Do</option><option value="avoid">Avoid</option></select></div>
+    <div class="field"><label>Text</label><input id="gdText" placeholder="e.g. Revise notes on the bus"></div>
+    <div class="two"><div class="field"><label>Area</label><select id="gdArea">${['study','body','rel','money','mind','spirit'].map(a=>`<option>${a}</option>`).join('')}</select></div>
+    <div class="field"><label>When it applies</label><select id="gdSlot"><option value="">Any time</option><option value="morning">Morning</option><option value="day">Daytime</option><option value="evening">Evening</option><option value="night">Night</option></select></div></div>`;
+  openModal(modalShell("Add to Do & Don't",body,`<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveGuide()">Save</button>`)); }
+function saveGuide(){ const text=$('#gdText').value.trim(); if(!text){ toast('Text required'); return; }
+  const area=$('#gdArea').value, slot=$('#gdSlot').value;
+  guideItems().push({id:uid('gd'),type:$('#gdType').value,text,area,slots:slot?[slot]:[],tags:[area==='rel'?'rel':area]});
+  save(); closeModal(); guideOpen=true; renderHabits(); toast('Added'); }
+function delGuide(id){ const h=ensureHabits(); h.guide.items=h.guide.items.filter(g=>g.id!==id); save(); renderHabits(); }
+
+/* ===================== HABIT REMINDERS ===================== */
+const REMIND_WINDOW=90; // minutes after a habit's time during which its reminder can still appear
+let _swReg=null;
+(function registerSW(){ try{ if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js').then(r=>_swReg=r).catch(()=>{}); }catch(e){} })();
+function habitNotifKey(id){ return todayStr()+':hb:'+id; }
+function dueHabitReminders(){ const h=ensureHabits(); if(h.notify===false) return [];
+  const t=todayStr(), now=nowMinutes(), day=habitDay(t), store=state.settings._notif||{};
+  return habitItems().filter(i=>{ if(!i.remind||!i.time||day[i.id]) return false; const m=toMin(i.time);
+    if(now<m||now>m+REMIND_WINDOW) return false; const st=store[habitNotifKey(i.id)];
+    if(st==='dismissed') return false; if(typeof st==='number'&&Date.now()<st) return false; return true; }); }
+function systemNotify(title,body){ try{
+    if(!('Notification' in window)||Notification.permission!=='granted') return;
+    if(_swReg&&_swReg.showNotification){ _swReg.showNotification(title,{body,icon:'icon-192.png',badge:'icon-192.png',tag:'rc-habit'}); return; }
+    new Notification(title,{body}); }catch(e){} }
+let _habitNotifShown=null;
+function checkHabitReminders(){ const due=dueHabitReminders(); if(!due.length) return;
+  const it=due[due.length-1]; if(_activeNotif!==null&&_activeNotif!=='hb:'+it.id) return; if(_habitNotifShown===it.id) return;
+  _habitNotifShown=it.id; _activeNotif='hb:'+it.id; const w=$('#notifWrap'); if(!w) return;
+  w.innerHTML=`<div class="notif-card"><div class="flex" style="align-items:flex-start;gap:10px"><span style="font-size:22px">🌅</span>
+    <div style="flex:1"><b>${esc(it.time)} · ${esc(it.text)}</b><div class="muted" style="font-size:13px;margin-top:2px">${esc(it.note||'Time for this habit.')}</div></div>
+    <button class="iconbtn" onclick="habitNotifAct('${it.id}','dismiss')">✕</button></div>
+    <div class="flex mt14" style="gap:8px"><button class="btn sm" onclick="habitNotifAct('${it.id}','done')">✓ Done</button>
+    <button class="btn ghost sm" onclick="habitNotifAct('${it.id}','snooze')">In 15 min</button></div></div>`;
+  systemNotify(it.time+' · '+it.text, it.note||'Time for this habit.'); }
+function habitNotifAct(id,act){ state.settings._notif=state.settings._notif||{}; const k=habitNotifKey(id);
+  if(act==='snooze'){ state.settings._notif[k]=Date.now()+15*60000; toast('Reminding you in 15 min'); }
+  else state.settings._notif[k]='dismissed';
+  if(act==='done'){ const h=ensureHabits(), t=todayStr(); h.log[t]=h.log[t]||{}; h.log[t][id]=true; toast('Ticked'); }
+  pruneNotif(); save(); _habitNotifShown=null; clearNotifUI();
+  if(curTab==='habits') renderHabits(); else if(curTab==='today') renderToday(); }
+/* hook into the app's existing 30-second reminder loop */
+if(typeof checkReminders==='function'){ const _origCheckReminders=checkReminders; checkReminders=function(){ _origCheckReminders(); checkHabitReminders(); }; }
+function reminderSettingsCard(){ const h=ensureHabits(); const perm=('Notification' in window)?Notification.permission:'unsupported';
+  const on=habitItems().filter(i=>i.remind);
+  return `<div class="card pad mb12"><div class="sec-title">🔔 Habit reminders</div>
+    <div class="between" style="flex-wrap:wrap;gap:10px"><div style="font-size:13.5px">${on.length?`Reminders on for <b>${on.length}</b> habits: ${on.map(i=>esc(i.time)).join(', ')}.`:'No habit reminders on.'} Turn any habit's reminder on or off with its ✎ button.</div>
+    <div class="flex" style="gap:8px"><button class="btn ${h.notify?'subtle':'ghost'} sm" onclick="ensureHabits().notify=!ensureHabits().notify;save();renderHabits()">${h.notify?'Reminders: on':'Reminders: off'}</button>
+    ${perm==='granted'?'<span class="pill green">Pop-ups allowed</span>':perm==='unsupported'?'':'<button class="btn sm" onclick="enableBrowserNotif()">Allow phone pop-ups</button>'}</div></div>
+    <div class="mut3" style="font-size:12px;margin-top:10px">Reminders appear while the app is open or running in the background. A browser can't wake a fully closed web app, so keep it open in a tab or on your home screen.</div></div>`; }

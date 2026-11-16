@@ -85,7 +85,7 @@ function renderToday(){ const el=$('#page-today'); const t=todayStr(); const sco
     <div style="font-size:32px">🌿</div><div class="h2 mt8">Weekend — rest mode</div>
     <p class="muted mt8" style="max-width:460px;margin:8px auto 0">No logging expected today and your streak is safe. Your weekend intentions: ${(state.settings.weekendIntentions||[]).map(i=>`<span class="pill">${esc(i)}</span>`).join(' ')||'<span class="mut3">none set</span>'}</p>
     <button class="btn ghost mt14" onclick="weekendLogAnyway()">Log anyway</button></div>`;
-    html+='<div class="mt14"></div>'+habitTodayCard(t);
+    html+='<div class="mt14"></div>'+habitTodayCard(t)+guidanceTodayCard();
     el.innerHTML=html; return; }
 
   // KPI row
@@ -102,6 +102,7 @@ function renderToday(){ const el=$('#page-today'); const t=todayStr(); const sco
 
   // daily rhythm (personal habits)
   html+=habitTodayCard(t);
+  html+=guidanceTodayCard();
 
   // suggestions
   const sug=computeSuggestions();
