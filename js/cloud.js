@@ -39,6 +39,7 @@ function cloudNormalize(s){
   s.reviews=s.reviews||{weekly:[],monthly:[]};
   ['projects','papers','deadlines','timeSessions'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   s.logs=s.logs||{};
+  if(typeof ensureHabits==='function') ensureHabits(s);
   return s;
 }
 

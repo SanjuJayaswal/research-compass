@@ -7,7 +7,7 @@
 const TITLES={today:['Today','Your daily check-in'],analytics:['Analytics','Progress, trends & consistency'],
   workflow:['Workflow','Your research stages & milestones'],projects:['Projects','Run work in parallel'],
   deadlines:['Deadlines & Goals','Stay ahead of what matters'],papers:['Papers','Literature reading tracker'],
-  focus:['Focus & Time','Deep-work sessions & hours'],reviews:['Reviews','Weekly & monthly reflection'],
+  habits:['Daily Rhythm','Your daily habits & weekly anchors'],focus:['Focus & Time','Deep-work sessions & hours'],reviews:['Reviews','Weekly & monthly reflection'],
   settings:['Settings','Profile, weekends & data'],guide:['Research Guide','How to do great research']};
 let curTab='today';
 function go(tab){ curTab=tab;
@@ -19,7 +19,7 @@ function go(tab){ curTab=tab;
   renderActive(); window.scrollTo(0,0);
 }
 function renderActive(){ const f={today:renderToday,analytics:renderAnalytics,workflow:renderWorkflow,
-  projects:renderProjects,deadlines:renderDeadlines,papers:renderPapers,focus:renderFocus,
+  projects:renderProjects,deadlines:renderDeadlines,papers:renderPapers,habits:renderHabits,focus:renderFocus,
   reviews:renderReviews,settings:renderSettings,guide:renderGuide}[curTab]; if(f) f(); renderStreak(); }
 
 /* ===================== MODAL ===================== */
